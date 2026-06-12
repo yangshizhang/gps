@@ -24,7 +24,12 @@ jobs:
         run: |
           cd GPSPro
           xcodegen generate
+          echo "=== Project files ==="
           ls -la
+          echo "=== Sources ==="
+          find Sources -type f
+          echo "=== Resources ==="
+          find Resources -type f
 
       - name: List available simulators
         run: xcrun simctl list devices available | head -30
@@ -33,26 +38,37 @@ jobs:
         id: build
         run: |
           cd GPSPro
+          echo "=== Available schemes ==="
+          xcodebuild -project GPSPro.xcodeproj -list
+          echo ""
+          echo "=== Building ==="
           xcodebuild -project GPSPro.xcodeproj \
             -scheme GPSPro \
             -configuration Debug \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -sdk iphonesimulator \
             -derivedDataPath ./build \
+            PRODUCT_NAME=GPSPro \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            build 2>&1 | tail -200
+            build 2>&1 | tail -300
 
       - name: Check build output
         run: |
-          echo "=== Checking build products ==="
-          ls -laR GPSPro/build/Build/Products/Debug-iphonesimulator/ 2>/dev/null | head -50
+          echo "=== Build products ==="
+          ls -laR GPSPro/build/Build/Products/Debug-iphonesimulator/ 2>/dev/null || echo "Debug-iphonesimulator not found"
           APP_PATH=$(find GPSPro/build -name "*.app" -type d | head -1)
           if [ -n "$APP_PATH" ]; then
-            echo "=== App bundle contents ==="
+            echo "=== App bundle: $APP_PATH ==="
             ls -la "$APP_PATH/"
             echo "=== Executable check ==="
+            EXEC_NAME=$(defaults read "$APP_PATH/Info.plist" CFBundleExecutable 2>/dev/null || echo "GPSPro")
+            echo "Expected executable name from plist: $EXEC_NAME"
             ls -la "$APP_PATH/GPSPro" 2>/dev/null || echo "GPSPro executable not found"
+            ls -la "$APP_PATH/$EXEC_NAME" 2>/dev/null || echo "$EXEC_NAME executable not found"
+          else
+            echo "ERROR: No .app found at all. Searching broader..."
+            find GPSPro/build -type f 2>/dev/null | head -30
           fi
 
       - name: Create unsigned IPA
@@ -62,6 +78,11 @@ jobs:
           APP_PATH=$(find build -name "*.app" -type d | head -1)
           if [ -n "$APP_PATH" ]; then
             echo "Creating IPA from: $APP_PATH"
+            EXEC_CHECK=$(ls "$APP_PATH/GPSPro" 2>/dev/null || echo "")
+            if [ -z "$EXEC_CHECK" ]; then
+              echo "WARNING: No GPSPro executable in app bundle!"
+              find "$APP_PATH" -type f -maxdepth 1
+            fi
             mkdir -p Payload
             cp -r "$APP_PATH" Payload/GPSPro.app
             cd Payload
