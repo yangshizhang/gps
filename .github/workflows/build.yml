@@ -85,9 +85,7 @@ jobs:
             fi
             mkdir -p Payload
             cp -r "$APP_PATH" Payload/GPSPro.app
-            cd Payload
-            zip -r ../GPSPro.ipa GPSPro.app
-            cd ..
+            zip -r GPSPro.ipa Payload
             ls -la GPSPro.ipa
             echo "ipa_created=true" >> $GITHUB_OUTPUT
           else
