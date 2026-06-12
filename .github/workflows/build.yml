@@ -15,15 +15,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Xcode
+      - name: Install XcodeGen
         run: |
-          xcodebuild -version
-          xcrun simctl list devices available | head -30
+          which xcodegen && xcodegen --version || echo "XcodeGen not found, will install"
+          brew install xcodegen
+          xcodegen --version
 
-      - name: Build iOS project with SPM
+      - name: Check project.yml
+        run: |
+          echo "=== project.yml contents ==="
+          cat GPSPro/project.yml
+
+      - name: Generate Xcode project
         run: |
           cd GPSPro
-          xcodebuild -scheme GPSPro \
+          pwd
+          ls -la
+          xcodegen generate 2>&1
+          ls -la
+
+      - name: List available simulators
+        run: xcrun simctl list devices available | head -30
+
+      - name: Build iOS project
+        run: |
+          cd GPSPro
+          xcodebuild -project GPSPro.xcodeproj \
+            -scheme GPSPro \
             -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             -derivedDataPath ./build \
@@ -32,25 +50,20 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build 2>&1 | tail -100
 
-      - name: Verify build output
-        run: |
-          ls -la GPSPro/build/Build/Products/Debug-iphonesimulator/ 2>/dev/null || echo "Checking for .app..."
-          find GPSPro/build -name "*.app" -type d 2>/dev/null | head -5
-
       - name: Create unsigned IPA
         id: create_ipa
         run: |
-          APP_PATH=$(find GPSPro/build -name "*.app" -type d | head -1)
+          cd GPSPro
+          APP_PATH=$(find build -name "*.app" -type d | head -1)
           if [ -n "$APP_PATH" ]; then
-            IPA_NAME="GPSPro.ipa"
-            echo "Creating $IPA_NAME from $APP_PATH"
+            echo "Creating IPA from $APP_PATH"
             mkdir -p Payload
             cp -r "$APP_PATH" Payload/
-            zip -r "$IPA_NAME" Payload
-            ls -la "$IPA_NAME"
+            zip -r GPSPro.ipa Payload
+            ls -la GPSPro.ipa
             echo "ipa_created=true" >> $GITHUB_OUTPUT
           else
-            echo "No .app found, checking build logs..."
+            echo "No .app found"
             echo "ipa_created=false" >> $GITHUB_OUTPUT
           fi
 
@@ -59,12 +72,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: GPSPro-unsigned-ipa
-          path: GPSPro.ipa
-
-      - name: Upload build products
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-products
-          path: GPSPro/build/Build/Products/
-          retention-days: 5
+          path: GPSPro/GPSPro.ipa
