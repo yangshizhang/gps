@@ -23,88 +23,58 @@ jobs:
       - name: Generate Xcode project
         run: |
           cd GPSPro
-          xcodegen generate
+          xcodegen generate --verbose
           ls -la
-          echo "=== Project structure ==="
-          find . -type f -name "*.swift" -o -name "*.plist" -o -name "*.xcassets"
-          echo "=== Project file ==="
-          cat project.yml
 
-      - name: List available simulators
-        run: xcrun simctl list devices available | head -30
+      - name: List schemes
+        run: |
+          cd GPSPro
+          xcodebuild -project GPSPro.xcodeproj -list
 
       - name: Build iOS project
         id: build
         run: |
           cd GPSPro
-          echo "=== Available schemes ==="
-          xcodebuild -project GPSPro.xcodeproj -list
-          echo ""
-          echo "=== Building ==="
           xcodebuild -project GPSPro.xcodeproj \
             -scheme GPSPro \
             -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath ./build \
-            PRODUCT_NAME=GPSPro \
-            EXECUTABLE_NAME=GPSPro \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=YES \
-            build 2>&1
+            build
 
-      - name: Check build output
+      - name: Verify build
         run: |
-          echo "=== Build products directory ==="
-          ls -la GPSPro/build/Build/Products/ 2>/dev/null || echo "Products dir not found"
-          echo ""
-          echo "=== Debug-iphonesimulator contents ==="
-          ls -laR GPSPro/build/Build/Products/Debug-iphonesimulator/ 2>/dev/null || echo "Debug-iphonesimulator not found"
-          APP_PATH=$(find GPSPro/build -name "*.app" -type d | head -1)
+          cd GPSPro
+          APP_PATH=$(find build -name "*.app" -type d | head -1)
+          echo "App path: $APP_PATH"
           if [ -n "$APP_PATH" ]; then
-            echo ""
-            echo "=== App bundle: $APP_PATH ==="
             ls -la "$APP_PATH/"
-            echo ""
-            echo "=== Executable check ==="
             if [ -f "$APP_PATH/GPSPro" ]; then
-              echo "SUCCESS: GPSPro executable found!"
-              ls -la "$APP_PATH/GPSPro"
+              echo "SUCCESS: Executable found"
               file "$APP_PATH/GPSPro"
             else
-              echo "ERROR: GPSPro executable NOT found in app bundle!"
-              find "$APP_PATH" -type f | head -20
+              echo "ERROR: Executable not found"
+              find "$APP_PATH" -type f
+              exit 1
             fi
           else
-            echo "ERROR: No .app found at all. Searching broader..."
-            find GPSPro/build -type f 2>/dev/null | head -30
+            echo "ERROR: No .app found"
+            exit 1
           fi
 
-      - name: Create unsigned IPA
+      - name: Create IPA
         id: create_ipa
         run: |
           cd GPSPro
           APP_PATH=$(find build -name "*.app" -type d | head -1)
-          if [ -n "$APP_PATH" ]; then
-            echo "Creating IPA from: $APP_PATH"
-            if [ ! -f "$APP_PATH/GPSPro" ]; then
-              echo "ERROR: No GPSPro executable in app bundle!"
-              exit 1
-            fi
-            mkdir -p Payload
-            cp -r "$APP_PATH" Payload/GPSPro.app
-            zip -r GPSPro.ipa Payload
-            ls -la GPSPro.ipa
-            echo "ipa_created=true" >> $GITHUB_OUTPUT
-          else
-            echo "ERROR: No .app found in build output"
-            echo "ipa_created=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/GPSPro.app
+          zip -r GPSPro.ipa Payload
+          ls -la GPSPro.ipa
+          echo "ipa_created=true" >> $GITHUB_OUTPUT
 
-      - name: Upload IPA artifact
-        if: steps.create_ipa.outputs.ipa_created == 'true'
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: GPSPro-unsigned-ipa
+          name: GPSPro-ipa
           path: GPSPro/GPSPro.ipa
