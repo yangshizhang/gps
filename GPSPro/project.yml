@@ -9,14 +9,20 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: Sources
-        includes:
-          - "**/*.swift"
-      - path: Resources
-        includes:
-          - "**/*"
+      - Sources/App/GPSProApp.swift
+      - Sources/Models/Models.swift
+      - Sources/Managers/LocationManager.swift
+      - Sources/Managers/RecordingManager.swift
+      - Sources/Views/ContentView.swift
+      - Sources/Views/SpeedometerView.swift
+      - Sources/Views/MapView.swift
+      - Sources/Views/HistoryView.swift
+      - Sources/Views/SettingsView.swift
+      - Resources/Info.plist
+      - Resources/Assets.xcassets
     settings:
       PRODUCT_NAME: GPSPro
+      EXECUTABLE_NAME: GPSPro
       PRODUCT_BUNDLE_IDENTIFIER: com.gpspro.app
       SWIFT_VERSION: "5.9"
       CODE_SIGN_STYLE: Manual
