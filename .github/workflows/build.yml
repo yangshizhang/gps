@@ -17,16 +17,16 @@ jobs:
 
       - name: Setup XcodeGen
         run: |
-          if ! command -v xcodegen &> /dev/null; then
-            echo "Installing XcodeGen..."
-            brew install xcodegen
-          fi
+          brew install xcodegen || true
           xcodegen --version
 
       - name: Generate Xcode project
         run: |
           cd GPSPro
-          xcodegen generate
+          echo "Generating Xcode project..."
+          xcodegen generate --verbose
+          echo "Listing generated files..."
+          ls -la
 
       - name: List available simulators
         run: xcrun simctl list devices available | head -30
@@ -37,12 +37,12 @@ jobs:
           xcodebuild -project GPSPro.xcodeproj \
             -scheme GPSPro \
             -configuration Debug \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
             -derivedDataPath ./build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            build 2>&1 | tail -50
+            build 2>&1 | tail -100
 
       - name: Verify build output
         run: |
