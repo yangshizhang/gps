@@ -10,10 +10,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: Sources
-        type: group
+      - Sources
       - path: Resources
-        type: group
+        type: folder
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.gpspro.app
       SWIFT_VERSION: "5.9"
