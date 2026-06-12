@@ -15,27 +15,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup XcodeGen
+      - name: Setup Xcode
         run: |
-          brew install xcodegen || true
-          xcodegen --version
+          xcodebuild -version
+          xcrun simctl list devices available | head -30
 
-      - name: Generate Xcode project
-        run: |
-          cd GPSPro
-          echo "Generating Xcode project..."
-          xcodegen generate --verbose
-          echo "Listing generated files..."
-          ls -la
-
-      - name: List available simulators
-        run: xcrun simctl list devices available | head -30
-
-      - name: Build iOS project
+      - name: Build iOS project with SPM
         run: |
           cd GPSPro
-          xcodebuild -project GPSPro.xcodeproj \
-            -scheme GPSPro \
+          xcodebuild -scheme GPSPro \
             -configuration Debug \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             -derivedDataPath ./build \
